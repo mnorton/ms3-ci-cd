@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="9090" doc:name="HTTP Listener Configuration"/>
+
+	<!-- Handles an HTTP GET request with optional comfort CGI parameter.  Returns JSON structure with action message. -->
+    <flow name="ms3-ci-cdFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/ci" doc:name="HTTP/ci"/>
+        <set-variable variableName="time" value="&quot;time&quot; : &quot;#[server.dateTime]&quot;" doc:name="Time"/>
+        
+        <!-- Setting a flow var simplifies the choice expressions. -->
+        <set-variable variableName="comfort" value="#[message.inboundProperties.'http.query.params'.comfort]" doc:name="Comfort"/>
+        <logger message="Comfort level:  #[flowVars.comfort]" level="INFO" doc:name="Log the Comfort Level"/>
+        
+        <!-- Switch on comfort value, handling null and defalt cases. -->
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.comfort == empty]">
+                <set-payload value="{#[flowVars.time], &quot;action&quot; : &quot;Null:  How comfortable are you?&quot;}" doc:name="Null"/>
+            </when>
+            <when expression="#[flowVars.comfort =='1']">
+                <set-payload value="{#[flowVars.time], &quot;action&quot; : &quot;1:  CI/CD can save you money.&quot;}" doc:name="Level 1"/>
+            </when>
+            <when expression="#[flowVars.comfort =='2']">
+                <set-payload value="{#[flowVars.time], &quot;action&quot; : &quot;2:  CI/CD can greatly speed up development time.&quot;}" doc:name="Level 2"/>
+            </when>
+            <when expression="#[flowVars.comfort =='3']">
+                <set-payload value="{#[flowVars.time], &quot;action&quot; : &quot;3:  An MS3 representative will contact you about next steps.&quot;}" doc:name="Level 3"/>
+            </when>
+            <when expression="#[flowVars.comfort =='4']">
+                <set-payload value="{#[flowVars.time], &quot;action&quot; : &quot;4:  What are we waiting for?  Let&#8217;s go!&quot;}" doc:name="Level 4"/>
+            </when>
+            <otherwise>
+                <set-payload value="{#[flowVars.time], &quot;action&quot; : &quot;Default:  How comfortable are you?&quot;}" doc:name="Default"/>
+            </otherwise>
+        </choice>
+        <catch-exception-strategy doc:name="Catch Exception Strategy">
+        	<!-- Return any errors in a JSON structure. -->
+            <set-payload value="{&quot;error&quot; : &quot;#[message.exception.getMessage()]&quot;}" doc:name="Set Error Msg"/>
+        </catch-exception-strategy>
+    </flow>
+</mule>
